@@ -155,11 +155,39 @@ void drawPlane(){
     // TODO 3.all create and apply your transformation matrices here
     //  you will need to transform the pose of the pieces of the plane by manipulating glm matrices and uploading a
     //  uniform mat4 model matrix to the vertex shader
-
+    static float propellerAngle = 3.0f;
+    glm::mat4 trans = glm::mat4(1.0f);
+    int model_location = glGetUniformLocation(shaderProgram -> ID, "model");
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
     // body
     drawSceneObject(planeBody);
     // right wing
     drawSceneObject(planeWing);
+
+    trans = glm::scale(trans, glm::vec3(-1.0f, 1.0f, 1.0f));
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
+    //left win
+    drawSceneObject(planeWing);
+
+    trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
+    trans = glm::translate(trans, glm::vec3(0.0f, -0.9f, 0.0f));
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
+    //left tail
+    drawSceneObject(planeWing);
+
+
+    trans = glm::scale(trans, glm::vec3(-1.0f, 1.0f, 1.0f));
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
+    //right tail
+    drawSceneObject(planeWing);
+
+    trans = glm::translate(trans, glm::vec3(0.0f, 2.0f, 0.0f));
+    trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
+    trans = glm::rotate(trans, glm::degrees(90.0f), glm::vec3(1.0f, 0.0f,0.0f));
+    trans = glm::rotate(trans, glm::degrees(propellerAngle), glm::vec3(0.0f, 0.0f,1.0f));
+    propellerAngle = propellerAngle + 0.3f;
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
+    drawSceneObject(planePropeller);
 
 }
 
@@ -184,6 +212,10 @@ void setup(){
                                       airplane.planeWingIndices);
     planeWing.vertexCount = airplane.planeWingIndices.size();
 
+    planePropeller.VAO = createVertexArray(airplane.planePropellerVertices,
+                                          airplane.planePropellerColors,
+                                          airplane.planePropellerIndices);
+    planePropeller.vertexCount = airplane.planePropellerIndices.size();
 }
 
 
