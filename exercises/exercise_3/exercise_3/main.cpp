@@ -49,7 +49,9 @@ Shader* shaderProgram;
 
 float planeHeading = 0.0f;
 float tiltAngle = 0.0f;
-float planeSpeed = 0.005f;
+float planeSpeed = 0.05f;
+const float planeScale = 0.2f;
+const float trueSize = 1 / planeScale;
 glm::vec2 planePosition = glm::vec2(0.0,0.0);
 
 
@@ -156,7 +158,38 @@ void drawPlane(){
     //  you will need to transform the pose of the pieces of the plane by manipulating glm matrices and uploading a
     //  uniform mat4 model matrix to the vertex shader
     static float propellerAngle = 3.0f;
+
     glm::mat4 trans = glm::mat4(1.0f);
+    trans = glm::scale(trans, glm::vec3(planeScale, planeScale, planeScale));
+    trans = glm::translate(trans, glm::vec3(planePosition.x, planePosition.y, 0.0f));
+    trans = glm::rotate(trans, glm::radians(tiltAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    if (planeHeading > 30.0f)
+    {
+        planeHeading = 30.0f;
+    }
+    else if(planeHeading < -30.0f)
+    {
+        planeHeading = -30.0f;
+    }
+
+    trans = glm::rotate(trans, glm::radians(-planeHeading), glm::vec3(0.0f, 0.0f, 1.0f));
+    planePosition.y = planePosition.y += planeSpeed;
+
+    if(planePosition.y > trueSize){
+        planePosition.y = -trueSize;
+    }
+
+    if(planePosition.x > trueSize){
+        planePosition.x = -trueSize;
+    }
+
+    if(planePosition.x < -trueSize){
+        planePosition.x = trueSize;
+    }
+
+
+
     int model_location = glGetUniformLocation(shaderProgram -> ID, "model");
     glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
     // body
@@ -183,8 +216,8 @@ void drawPlane(){
 
     trans = glm::translate(trans, glm::vec3(0.0f, 2.0f, 0.0f));
     trans = glm::scale(trans, glm::vec3(0.5f, 0.5f, 0.5f));
-    trans = glm::rotate(trans, glm::degrees(90.0f), glm::vec3(1.0f, 0.0f,0.0f));
-    trans = glm::rotate(trans, glm::degrees(propellerAngle), glm::vec3(0.0f, 0.0f,1.0f));
+    trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(1.0f, 0.0f,0.0f));
+    trans = glm::rotate(trans, glm::radians(propellerAngle), glm::vec3(0.0f, 0.0f,1.0f));
     propellerAngle = propellerAngle + 0.3f;
     glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(trans));
     drawSceneObject(planePropeller);
@@ -272,7 +305,24 @@ void processInput(GLFWwindow *window)
     // TODO 3.4 control the plane (turn left and right) using the A and D keys
     // you will need to read A and D key press inputs
     // if GLFW_KEY_A is GLFW_PRESS, plane turn left
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        tiltAngle = -45.0f;
+        planeHeading -= 5.0f;
+        planePosition.x = planePosition.x - planeSpeed;
+    }
     // if GLFW_KEY_D is GLFW_PRESS, plane turn right
+    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        tiltAngle = 45.0f;
+        planeHeading += 5.0f;
+        planePosition.x = planePosition.x + planeSpeed;
+    }
+    else {
+        tiltAngle = 0.0f;
+        planeHeading = 0.0f;
+    }
+
 
 }
 

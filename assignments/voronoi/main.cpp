@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <glm/gtc/type_ptr.hpp>
 
 // structure to hold the info necessary to render an object
 struct SceneObject {
@@ -25,6 +26,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 // settings
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
+const int triangleCount = 50;
+const float PI = 3.14159265;
+const float angleInterval = 360.0 / (float)triangleCount;
+const float radius = 2.5f;
+
 
 // global variables we will use to store our objects, shaders, and active shader
 std::vector<SceneObject> sceneObjects;
@@ -92,7 +98,20 @@ int main()
         // TODO voronoi 1.3
         // Iterate through the scene objects, for each object:
         // - bind the VAO; set the uniform variables; and draw.
-        // CODE HERE
+        int pos_off_location = glGetUniformLocation(activeShader -> ID, "positionOffset");
+        int coneColor_location = glGetUniformLocation(activeShader -> ID, "coneColor");
+
+        for(auto obj : sceneObjects)
+        {
+
+            glm::vec2 posOffset = glm::vec2(obj.x, obj.y);
+            glUniform2fv(pos_off_location, 1, glm::value_ptr(posOffset));
+            glUniform3fv(coneColor_location, 1, glm::value_ptr(glm::vec3(obj.r, obj.g, obj.b)));
+            glBindVertexArray(obj.VAO);
+            glDrawElements(GL_TRIANGLES,  obj.vertexCount, GL_UNSIGNED_INT, 0);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+        }
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -105,6 +124,14 @@ int main()
     return 0;
 }
 
+void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
+    // create the VBO on OpenGL and get a handle to it
+    glGenBuffers(1, &VBO);
+    // bind the VBO
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // set the content of the VBO (type, size, pointer to start, and how it is used)
+    glBufferData(GL_ARRAY_BUFFER, array.size() * sizeof(GLfloat), &array[0], GL_STATIC_DRAW);
+}
 
 // creates a cone triangle mesh, uploads it to openGL and returns the VAO associated to the mesh
 SceneObject instantiateCone(float r, float g, float b, float offsetX, float offsetY){
@@ -115,19 +142,65 @@ SceneObject instantiateCone(float r, float g, float b, float offsetX, float offs
     SceneObject sceneObject{};
 
     // you will need to store offsetX, offsetY, r, g and b in the object.
-    // CODE HERE
+
+    sceneObject.r = r;
+    sceneObject.g = g;
+    sceneObject.b = b;
+
+    sceneObject.x = offsetX;
+    sceneObject.y = offsetY;
+
+
     // Build the geometry into an std::vector<float> or float array.
-    // CODE HERE
+    std::vector<float> vertexData;
+    float height = radius / tan(45 * PI / 180.0);
+
+    float currentAngle = 0.0f;
+    for (int i = 0; i <= triangleCount; i++){
+
+        vertexData.push_back(0.0f);  //X
+        vertexData.push_back(0.0f);  //Y
+        vertexData.push_back(0.0f);
+
+        for (int j = 0; j < 2; j++)
+        {
+            vertexData.push_back(radius * cos(currentAngle + angleInterval * j) * PI / 180.0);
+            vertexData.push_back(radius * sin(currentAngle + angleInterval * j) * PI / 180.0);
+        }
+
+
+        vertexData.push_back(height* -1.0);
+
+        currentAngle += angleInterval;
+    }
+
+
+    //TOP
+    vertexData.push_back(0.0f);  //X
+    vertexData.push_back(0.0f);  //Y
+    vertexData.push_back(0.0f);  //Z
+
+
     // Store the number of vertices in the mesh in the scene object.
-    // CODE HERE
+    sceneObject.vertexCount = vertexData.size();
+
     // Declare and generate a VAO and VBO (and an EBO if you decide the work with indices).
-    // CODE HERE
+    unsigned int vertexDataVBO, VAO;
+    createArrayBuffer(vertexData, vertexDataVBO);
+    glGenVertexArrays(1, &VAO);
     // Bind and set the VAO and VBO (and optionally a EBO) in the correct order.
-    // CODE HERE
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexDataVBO);
+
     // Set the position attribute pointers in the shader.
-    // CODE HERE
+    int posSize = 3;
+    int posAttributeLocation = glGetAttribLocation(activeShader -> ID, "pos");
+    glEnableVertexAttribArray(posAttributeLocation);
+    glVertexAttribPointer(posAttributeLocation, posSize, GL_FLOAT, GL_FALSE,
+                          (posSize) * (int) sizeof(float), 0);
+
     // Store the VAO handle in the scene object.
-    // CODE HERE
+    sceneObject.VAO = VAO;
 
     // 'return' the scene object for the cone instance you just created.
     return sceneObject;
@@ -140,7 +213,27 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
 
     // Test button press, see documentation at:
     //     https://www.glfw.org/docs/latest/input_guide.html#input_mouse_button
-    // CODE HERE
+
+    // get screen size and click coordinates
+    double xPos, yPos;
+    int xScreen, yScreen;
+    glfwGetCursorPos(window, &xPos, &yPos);
+    glfwGetWindowSize(window, &xScreen, &yScreen);
+
+    // convert from screen space to normalized display coordinates
+    float xNdc = (float) xPos/(float) xScreen * 2.0f -1.0f;
+    float yNdc = (float) yPos/(float) yScreen * 2.0f -1.0f;
+    yNdc = -yNdc;
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        float red = (float)std::rand() / RAND_MAX;
+        float green = (float)std::rand() / RAND_MAX;
+        float blue = (float)std::rand() / RAND_MAX;
+        SceneObject cone = instantiateCone(red, green, blue, xNdc, yNdc);
+        sceneObjects.push_back(cone);
+    }
+
     // If a left mouse button press was detected, call instantiateCone:
     // - Push the return value to the back of the global 'vector<SceneObject> sceneObjects'.
     // - The click position should be transformed from screen coordinates to normalized device coordinates,

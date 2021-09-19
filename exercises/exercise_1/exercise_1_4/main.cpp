@@ -23,7 +23,7 @@ void processInput(GLFWwindow *window);
 // --------
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
-
+const unsigned int NUM_TRIANGLES = 10;
 
 // shader programs
 // ---------------
@@ -179,22 +179,28 @@ void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
 void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int &vertexCount){
 
     unsigned int posVBO, colorVBO;
-    createArrayBuffer(std::vector<float>{
-            // position
-            0.0f,  0.0f, 0.0f,
-            0.5f,  0.0f, 0.0f,
-            0.5f,  0.5f, 0.0f
-    }, posVBO);
 
-    createArrayBuffer( std::vector<float>{
-            // color
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f,
-            1.0f,  0.0f, 0.0f
-    }, colorVBO);
+    std::vector<float> positions = {};
+    std::vector<float> colors = {};
+
+    for(int i = 0; i < NUM_TRIANGLES; i++)
+    {
+        positions.insert(positions.end(), {0.0f, 0.0f, 0.0f}); // Center
+        positions.insert(positions.end(), {0.0f, 0.5f, 0.0f}); // Left
+        positions.insert(positions.end(), {0.5f, 0.5f, 0.0f}); // Left
+
+        colors.insert(colors.end(), {1.0f,  0.0f, 0.0f});
+        colors.insert(colors.end(), {1.0f,  0.0f, 0.0f});
+        colors.insert(colors.end(), {1.0f,  0.0f, 0.0f});
+
+    }
+
+    createArrayBuffer(positions, posVBO);
+
+    createArrayBuffer( colors, colorVBO);
 
     // tell how many vertices to draw
-    vertexCount = 3;
+    vertexCount = 3*NUM_TRIANGLES;
 
     // create a vertex array object (VAO) on OpenGL and save a handle to it
     glGenVertexArrays(1, &VAO);
