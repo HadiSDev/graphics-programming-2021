@@ -18,6 +18,7 @@ struct SceneObject {
 
 // declaration of the function you will implement in voronoi 1.1
 SceneObject instantiateCone(float r, float g, float b, float offsetX, float offsetY);
+std::pair<std::vector<float>, std::vector<GLint>> createCone();
 // mouse, keyboard and screen reshape glfw callbacks
 void button_input_callback(GLFWwindow* window, int button, int action, int mods);
 void key_input_callback(GLFWwindow* window, int button, int other,int action, int mods);
@@ -27,9 +28,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
 const int triangleCount = 50;
+const float radius = 100;
 const float PI = 3.14159265;
-const float angleInterval = 360.0 / (float)triangleCount;
-const float radius = 2.5f;
+const float angleInterval = (2*PI) / (float)triangleCount;
+const float height = -0.5;
 
 
 // global variables we will use to store our objects, shaders, and active shader
@@ -108,9 +110,7 @@ int main()
             glUniform2fv(pos_off_location, 1, glm::value_ptr(posOffset));
             glUniform3fv(coneColor_location, 1, glm::value_ptr(glm::vec3(obj.r, obj.g, obj.b)));
             glBindVertexArray(obj.VAO);
-            glDrawElements(GL_TRIANGLES,  obj.vertexCount, GL_UNSIGNED_INT, 0);
-            glClear(GL_DEPTH_BUFFER_BIT);
-
+            glDrawElements(GL_TRIANGLES, obj.vertexCount, GL_UNSIGNED_INT, 0);
         }
 
 
@@ -124,15 +124,42 @@ int main()
     return 0;
 }
 
-void createArrayBuffer(const std::vector<float> &array, unsigned int &VBO){
+void createArrayBuffer(const std::vector<float> &array, const std::vector<GLint> &indices,
+                       unsigned int &VBO, unsigned int &EBO){
     // create the VBO on OpenGL and get a handle to it
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
     // bind the VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     // set the content of the VBO (type, size, pointer to start, and how it is used)
     glBufferData(GL_ARRAY_BUFFER, array.size() * sizeof(GLfloat), &array[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLint), &indices[0], GL_STATIC_DRAW);
 }
 
+std::pair<std::vector<float>, std::vector<GLint>> createCone()
+{
+    std::vector<float> vertexData;
+    std::vector<GLint> vertexIndices;
+    vertexData.push_back(0.0f);
+    vertexData.push_back(0.0f);
+    vertexData.push_back(1.0f);
+
+    for (int i = 0; i <= triangleCount; i++){
+        float angle = i*angleInterval;
+        vertexData.push_back(cos(angle) / 2 * radius);
+        vertexData.push_back(sin(angle) / 2 * radius);
+        vertexData.push_back(height);
+    }
+
+    for (int i = 0; i < triangleCount; i++){
+        vertexIndices.push_back(0);
+        vertexIndices.push_back(i + 1);
+        vertexIndices.push_back(i + 2);
+    }
+
+    return std::make_pair(vertexData, vertexIndices);
+}
 // creates a cone triangle mesh, uploads it to openGL and returns the VAO associated to the mesh
 SceneObject instantiateCone(float r, float g, float b, float offsetX, float offsetY){
     // TODO voronoi 1.1
@@ -152,46 +179,33 @@ SceneObject instantiateCone(float r, float g, float b, float offsetX, float offs
 
 
     // Build the geometry into an std::vector<float> or float array.
-    std::vector<float> vertexData;
-    float height = radius / tan(45 * PI / 180.0);
 
-    float currentAngle = 0.0f;
-    for (int i = 0; i <= triangleCount; i++){
-
-        vertexData.push_back(0.0f);  //X
-        vertexData.push_back(0.0f);  //Y
-        vertexData.push_back(0.0f);
-
-        for (int j = 0; j < 2; j++)
-        {
-            vertexData.push_back(radius * cos(currentAngle + angleInterval * j) * PI / 180.0);
-            vertexData.push_back(radius * sin(currentAngle + angleInterval * j) * PI / 180.0);
-        }
-
-
-        vertexData.push_back(height* -1.0);
-
-        currentAngle += angleInterval;
-    }
-
-
-    //TOP
-    vertexData.push_back(0.0f);  //X
-    vertexData.push_back(0.0f);  //Y
-    vertexData.push_back(0.0f);  //Z
-
+    auto cone = createCone();
+    std::vector<float> vertexData = cone.first;
+    std::vector<GLint> vertexIndices = cone.second;
 
     // Store the number of vertices in the mesh in the scene object.
-    sceneObject.vertexCount = vertexData.size();
+    sceneObject.vertexCount = vertexIndices.size();
 
     // Declare and generate a VAO and VBO (and an EBO if you decide the work with indices).
-    unsigned int vertexDataVBO, VAO;
-    createArrayBuffer(vertexData, vertexDataVBO);
-    glGenVertexArrays(1, &VAO);
-    // Bind and set the VAO and VBO (and optionally a EBO) in the correct order.
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexDataVBO);
+    unsigned int vertexDataVBO, vertexIndicesEBO, VAO;
 
+    createArrayBuffer(vertexData, vertexIndices, vertexDataVBO, vertexIndicesEBO);
+
+
+    // tell how many vertices to draw,
+    // no need to divide by the number of floats per vertex since we now have a list of vertex indices
+    sceneObject.vertexCount = vertexIndices.size();
+
+    // create a vertex array object (VAO) on OpenGL and save a handle to it
+    glGenVertexArrays(1, &VAO);
+
+    // bind vertex array object
+    glBindVertexArray(VAO);
+
+    // set vertex shader attribute "aPos"
+    glBindBuffer(GL_ARRAY_BUFFER, vertexDataVBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexIndicesEBO);
     // Set the position attribute pointers in the shader.
     int posSize = 3;
     int posAttributeLocation = glGetAttribLocation(activeShader -> ID, "pos");
@@ -214,19 +228,25 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
     // Test button press, see documentation at:
     //     https://www.glfw.org/docs/latest/input_guide.html#input_mouse_button
 
-    // get screen size and click coordinates
-    double xPos, yPos;
-    int xScreen, yScreen;
-    glfwGetCursorPos(window, &xPos, &yPos);
-    glfwGetWindowSize(window, &xScreen, &yScreen);
-
-    // convert from screen space to normalized display coordinates
-    float xNdc = (float) xPos/(float) xScreen * 2.0f -1.0f;
-    float yNdc = (float) yPos/(float) yScreen * 2.0f -1.0f;
-    yNdc = -yNdc;
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
+        // If a left mouse button press was detected, call instantiateCone:
+        // - Push the return value to the back of the global 'vector<SceneObject> sceneObjects'.
+        // - The click position should be transformed from screen coordinates to normalized device coordinates,
+        //   to obtain the offset values that describe the position of the object in the screen plane.
+        // - A random value in the range [0, 1] should be used for the r, g and b variables.
+        // CODE HERE
+        double xPos, yPos;
+        int xScreen, yScreen;
+        glfwGetCursorPos(window, &xPos, &yPos);
+        glfwGetWindowSize(window, &xScreen, &yScreen);
+
+        // convert from screen space to normalized display coordinates
+        float xNdc = (float) xPos/(float) xScreen * 2.0f -1.0f;
+        float yNdc = (float) yPos/(float) yScreen * 2.0f -1.0f;
+        yNdc = -yNdc;
+
         float red = (float)std::rand() / RAND_MAX;
         float green = (float)std::rand() / RAND_MAX;
         float blue = (float)std::rand() / RAND_MAX;
@@ -234,12 +254,7 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
         sceneObjects.push_back(cone);
     }
 
-    // If a left mouse button press was detected, call instantiateCone:
-    // - Push the return value to the back of the global 'vector<SceneObject> sceneObjects'.
-    // - The click position should be transformed from screen coordinates to normalized device coordinates,
-    //   to obtain the offset values that describe the position of the object in the screen plane.
-    // - A random value in the range [0, 1] should be used for the r, g and b variables.
-    // CODE HERE
+
 }
 
 // glfw: called whenever a keyboard key is pressed
@@ -250,7 +265,18 @@ void key_input_callback(GLFWwindow* window, int button, int other,int action, in
     // see documentation at https://www.glfw.org/docs/latest/input_guide.html#input_keyboard
     // Key 1 sets the activeShader to &shaderPrograms[0];
     //   and so on.
-    // CODE HERE
+    if (button == GLFW_KEY_1 && action == GLFW_PRESS)
+    {
+        activeShader = &shaderPrograms[0];
+    }
+    else if (button == GLFW_KEY_2 && action == GLFW_PRESS)
+    {
+        activeShader = &shaderPrograms[1];
+    }
+    else if (button == GLFW_KEY_3 && action == GLFW_PRESS)
+    {
+        activeShader = &shaderPrograms[2];
+    }
 }
 
 

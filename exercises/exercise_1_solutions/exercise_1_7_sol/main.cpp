@@ -247,7 +247,7 @@ void setupShape(const unsigned int shaderProgram,unsigned int &VAO, unsigned int
     glVertexAttribPointer(colorAttributeLocation, colorSize, GL_FLOAT, GL_FALSE,
                           (posSize + colorSize) * (int) sizeof(float), (void*) (posSize * sizeof(float)));
 
-    glBindVertexArray(0);
+
 }
 
 

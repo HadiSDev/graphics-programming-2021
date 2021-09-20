@@ -25,7 +25,7 @@ file(GLOB target_src "*.h" "*.cpp") # look for source files
 file(GLOB target_shaders "shaders/*.vert" "shaders/*.frag") # look for shaders
 
 set(output_file "assignment_voronoi")
-add_executable(${output_file} ${target_src} ${target_shaders})
+add_executable(${output_file} ${target_src} ${target_shaders} main.cpp)
 
 ## set link libraries
 target_link_libraries(${output_file} ${libraries})
