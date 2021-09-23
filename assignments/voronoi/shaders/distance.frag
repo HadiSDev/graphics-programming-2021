@@ -14,5 +14,7 @@ void main()
     // Make sure that the z-coordinate is in the [0, 1] range (if it is not, place it in that range).
     // You can use non-linear transformations of the z-coordinate, such as the 'pow' or 'sqrt' functions,
     // to make the change in grey tone more evident.
-    fragColor = vec4(1.0*zCoordinate, 1.0*zCoordinate, 1.0*zCoordinate, 1.0); // CODE HERE
+    float color = pow(sqrt(abs(gl_FragCoord.z - zCoordinate)), 5.0);
+
+    fragColor = vec4(vec3(color), 1.0); // CODE HERE
 }

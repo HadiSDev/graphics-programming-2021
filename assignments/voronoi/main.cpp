@@ -28,10 +28,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
 const int triangleCount = 50;
-const float radius = 100;
+const float radius = 5.0f;
 const float PI = 3.14159265;
 const float angleInterval = (2*PI) / (float)triangleCount;
-const float height = -0.5;
+const float height = 0.0f;
 
 
 // global variables we will use to store our objects, shaders, and active shader

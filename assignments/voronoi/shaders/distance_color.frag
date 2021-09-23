@@ -16,5 +16,8 @@ void main()
     // Make sure that the z-coordinate is in the [0, 1] range (if it is not, place it in that range),
     // you can use non-linear transformations of the z-coordinate, such as the 'pow' or 'sqrt' functions,
     // to make the colors brighter close to the center of the cone.
-    fragColor = vec4(1.0*zCoordinate, 1.0*zCoordinate, 1.0*zCoordinate, 1.0); // CODE HERE
+    float color_ratio = pow(sqrt(abs(gl_FragCoord.z - zCoordinate)), 3.0);
+
+    vec3 color = coneColor * color_ratio;
+    fragColor = vec4(vec3(color), 1.0); // CODE HERE
 }
