@@ -65,7 +65,9 @@ float currentTime;
 glm::vec2 clickStart(0.0f), clickEnd(0.0f);
 
 // TODO 4.1 and 4.2 - global variables you might need
-
+glm::vec2 planePosition = glm::vec2(0.0,0.0);
+const float PI = 3.14159265;
+float currentAngle = 0.0f;
 
 
 int main()
@@ -170,9 +172,19 @@ void drawArrow(){
 
 void drawPlane(){
     // TODO - 4.1 translate and rotate the plane
+//
+    float angleInDegrees_ = atan2(clickEnd.y,clickEnd.x) * 180.0f / PI;
 
-    glm::mat4 rotation(1.0f);
-    glm::mat4 translation(1.0f);
+//    std::cout << "Plane Position: " << planePosition << std::endl;
+
+//    float angle = acos(glm::dot(planePosition, clickEnd)) * 180.0f / PI;
+//
+//    std::cout << "Angle: " << angle << std::endl;
+
+    glm::mat4 rotation = glm::rotateZ(glm::radians(currentAngle));
+    glm::mat4 translation = glm::translate(planePosition.x, planePosition.y, 0);
+
+
 
     // scale matrix to make the plane 10 times smaller
     glm::mat4 scale = glm::scale(.1f, .1f, .1f);
@@ -219,7 +231,7 @@ void drawPlane(){
 
 void setup(){
     // initialize shaders
-    shaderProgram = new Shader("shader.vert", "shader.frag");
+    shaderProgram = new Shader("shaders/shader.vert", "shaders/shader.frag");
 
     PlaneModel& airplane = PlaneModel::getInstance();
     // initialize plane body mesh objects
@@ -305,6 +317,10 @@ void cursor_input_callback(GLFWwindow* window, double posX, double posY){
         int screenW, screenH;
         glfwGetWindowSize(window, &screenW, &screenH);
         cursorInNdc(posX, posY, screenW, screenH, clickEnd.x, clickEnd.y);
+
+        currentAngle = atan2(clickEnd.y,clickEnd.x) * 180.0f / PI - 90.0f;
+
+        std::cout << "Angle: " << currentAngle << std::endl;
     }
 }
 
@@ -317,11 +333,16 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
 
     // TODO 4.1 and 4.2 - you may wish to update some of your global variables here
 
+
+
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+
         // set the start position
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
         // reset the end position
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
+
+        currentAngle = atan2(clickEnd.y,clickEnd.x) * 180.0f / PI - 90.0f;
 
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
@@ -329,6 +350,8 @@ void button_input_callback(GLFWwindow* window, int button, int action, int mods)
         cursorInNdc(screenX, screenY, screenW, screenH, clickEnd.x, clickEnd.y);
         // reset the start position
         cursorInNdc(screenX, screenY, screenW, screenH, clickStart.x, clickStart.y);
+
+        cursorInNdc(screenX, screenY, screenW, screenH, planePosition.x, planePosition.y);
     }
 }
 
