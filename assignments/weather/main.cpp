@@ -169,10 +169,14 @@ int main()
 
         glBindVertexArray(ParticleVAO);
 
-        float x = RandomNumber(-20, 20);
-        float y = 20;
-        float z = RandomNumber(-20, 20);
-        emitParticle(x, y, z, 0.0, 5, currentTime);
+        for(int i = 0; i < 100; i ++)
+        {
+            float x = RandomNumber(-20, 20);
+            float y = 20;
+            float z = RandomNumber(-20, 20);
+            emitParticle(x, y, z, 0.0, 20, currentTime);
+        }
+
         glDrawArrays(GL_POINTS, 0, numberOfParticles);
 
 
@@ -303,15 +307,6 @@ void emitParticle(float x, float y, float z, float velocityX, float velocityY, f
 float RandomNumber(float Min, float Max)
 {
     return ((float(rand()) / float(RAND_MAX)) * (Max - Min)) + Min;
-}
-
-void initRainParticles()
-{
-    for(int i = 0; i < numberOfParticles; i++)
-    {
-
-
-    }
 }
 
 unsigned int createVertexArray(const std::vector<float> &positions, const std::vector<float> &colors, const std::vector<unsigned int> &indices){
