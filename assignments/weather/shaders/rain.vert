@@ -11,6 +11,7 @@ out float elapsedTimeFrag;
 
 void main()
 {
+   float maxPointSize = 5.0;
    vec3 finalPos = pos;
    float elapsedTime = currentTime - timeOfBirth;
 
@@ -19,5 +20,8 @@ void main()
    elapsedTimeFrag = elapsedTime;
 
    gl_Position = model * vec4(finalPos, 1.0);
-   gl_PointSize = 10.0;
+
+   float distance = distance(pos, cameraPos) + 0.0001; // To avoid division by zerp
+
+   gl_PointSize = max(maxPointSize, maxPointSize/distance);
 }

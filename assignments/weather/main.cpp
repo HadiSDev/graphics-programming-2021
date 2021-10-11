@@ -166,6 +166,7 @@ int main()
         glm::mat4 viewProjection = projection * view;
 
         shaderProgramRain->setMat4("model", viewProjection);
+        shaderProgramRain->setVec3("cameraPos", camPosition);
 
         glBindVertexArray(ParticleVAO);
 
