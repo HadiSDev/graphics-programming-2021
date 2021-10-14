@@ -28,8 +28,11 @@ unsigned int createElementArrayBuffer(const std::vector<unsigned int> &array);
 unsigned int createVertexArray(const std::vector<float> &positions, const std::vector<float> &colors, const std::vector<unsigned int> &indices);
 void setup();
 void drawObjects();
-void bindAttributes();
+void bindAttributesParticle();
+void bindAttributesLine();
+void createSnowVertexBuffer();
 void createRainVertexBuffer();
+void initSnowParticles();
 void initRainParticles();
 float RandomNumber(float Min, float Max);
 
@@ -41,7 +44,11 @@ void processInput(GLFWwindow* window);
 void cursor_input_callback(GLFWwindow* window, double posX, double posY);
 void drawCube(glm::mat4 model);
 void drawPlane(glm::mat4 model);
-void emitParticle(float x, float y, float z, float velocityX, float velocityY, float timeOfBirth);
+void emitParticle(float posX, float posY, float posZ, float velX, float velY, float velZ, float ranX, float ranY, float ranZ, glm::vec3 color);
+void emitLine(float posXStart, float posYStart, float posZStart, float posXEnd, float posYEnd, float posZEnd, float velX, float velY, float velZ, float ranX, float ranY, float ranZ, glm::vec3 color);
+
+void renderParticles();
+void renderLines();
 
 // screen settings
 // ---------------
@@ -58,7 +65,9 @@ float lastX = 300, lastY = 300;
 SceneObject cube;
 SceneObject floorObj;
 Shader* shaderProgramWorld;
+Shader* shaderProgramSnow;
 Shader* shaderProgramRain;
+
 
 // global variables used for control
 // ---------------------------------
@@ -68,12 +77,14 @@ glm::vec3 camPosition(.0f, 1.6f, 0.0f);
 float linearSpeed = 0.15f, rotationGain = 30.0f;
 
 // Particle Settings
-const unsigned int particleSize = 6;
+const unsigned int particleSize = 13;
+const unsigned int lineSize = 16;
 const unsigned int numberOfParticles = 10000;
-unsigned int ParticleVAO, ParticleVBO;
+unsigned int ParticleVAO, ParticleVBO, LineVAO, LineVBO;
 const unsigned int sizeOfFloat = 4;
 unsigned int particleId = 0;
-
+const float boxSize = 5.0;
+bool isRaining = true;
 
 int main()
 {
@@ -115,7 +126,11 @@ int main()
     // setup mesh objects
     // ---------------------------------------
     setup();
+    shaderProgramSnow -> use();
+    shaderProgramSnow->setFloat("boxSize", boxSize);
 
+    shaderProgramRain -> use();
+    shaderProgramRain->setFloat("boxSize", boxSize);
     // set up the z-buffer
     // Notice that the depth range is now set to glDepthRange(-1,1), that is, a left handed coordinate system.
     // That is because the default openGL's NDC is in a left handed coordinate system (even though the default
@@ -125,8 +140,10 @@ int main()
     glEnable(GL_DEPTH_TEST); // turn on z-buffer depth test
     glDepthFunc(GL_LESS); // draws fragments that are closer to the screen in NDC
 
+    createSnowVertexBuffer();
     createRainVertexBuffer();
-
+    initSnowParticles();
+    initRainParticles();
     // render loop
     // -----------
     // render every loopInterval seconds
@@ -150,39 +167,15 @@ int main()
         shaderProgramWorld->use();
         drawObjects();
 
-        glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-        shaderProgramRain -> use();
-        shaderProgramRain -> setFloat("currentTime", currentTime);
-
-        glm::mat4 scale = glm::scale(1.f, 1.f, 1.f);
-
-        // NEW!
-        // update the camera pose and projection, and compose the two into the viewProjection with a matrix multiplication
-        // projection * view = world_to_view -> view_to_perspective_projection
-        // or if we want ot match the multiplication order (projection * view), we could read
-        // perspective_projection_from_view <- view_from_world
-        glm::mat4 projection = glm::perspectiveFov(70.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, .01f, 100.0f);
-        glm::mat4 view = glm::lookAt(camPosition, camPosition + camForward, glm::vec3(0,1,0));
-        glm::mat4 viewProjection = projection * view;
-
-        shaderProgramRain->setMat4("model", viewProjection);
-        shaderProgramRain->setVec3("cameraPos", camPosition);
-
-        glBindVertexArray(ParticleVAO);
-
-        for(int i = 0; i < 100; i ++)
+        if(isRaining)
         {
-            float x = RandomNumber(-20, 20);
-            float y = 20;
-            float z = RandomNumber(-20, 20);
-            emitParticle(x, y, z, 0.0, 20, currentTime);
+            renderLines();
+        }
+        else{
+            renderParticles();
         }
 
-        glDrawArrays(GL_POINTS, 0, numberOfParticles);
 
-
-
-        glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -195,7 +188,7 @@ int main()
     }
 
     delete shaderProgramWorld;
-    delete shaderProgramRain;
+    delete shaderProgramSnow;
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -203,7 +196,103 @@ int main()
     return 0;
 }
 
-void createRainVertexBuffer(){
+void renderParticles() {
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    shaderProgramSnow -> use();
+    shaderProgramSnow -> setFloat("currentTime", currentTime);
+
+    glm::mat4 scale = glm::scale(1.f, 1.f, 1.f);
+
+    glm::mat4 projection = glm::perspectiveFov(70.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, .01f, 100.0f);
+    glm::mat4 view = glm::lookAt(camPosition, camPosition + camForward, glm::vec3(0,1,0));
+    glm::mat4 viewProjection = projection * view;
+
+    shaderProgramSnow->setMat4("model", viewProjection);
+
+    glm::vec3 forwardOffset(camForward * 2.0f);
+
+
+    shaderProgramSnow->setVec3("camPosition", camPosition);
+    shaderProgramSnow->setVec3("forwardOffset", forwardOffset);
+
+
+    glBindVertexArray(ParticleVAO);
+    glDrawArrays(GL_POINTS, 0, numberOfParticles);
+    glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+}
+
+void renderLines() {
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    shaderProgramSnow -> use();
+    shaderProgramSnow -> setFloat("currentTime", currentTime);
+
+    glm::mat4 scale = glm::scale(1.f, 1.f, 1.f);
+
+    glm::mat4 projection = glm::perspectiveFov(70.0f, (float)SCR_WIDTH, (float)SCR_HEIGHT, .01f, 100.0f);
+    glm::mat4 view = glm::lookAt(camPosition, camPosition + camForward, glm::vec3(0,1,0));
+    glm::mat4 viewProjection = projection * view;
+
+    shaderProgramSnow->setMat4("model", viewProjection);
+
+    glm::vec3 forwardOffset(camForward * 2.0f);
+
+
+    shaderProgramSnow->setVec3("camPosition", camPosition);
+    shaderProgramSnow->setVec3("forwardOffset", forwardOffset);
+
+
+    glBindVertexArray(ParticleVAO);
+    glDrawArrays(GL_LINE, 0, numberOfParticles);
+    glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+}
+
+void initSnowParticles() {
+    for(int i = 0; i < numberOfParticles; i ++)
+    {
+        float posX = RandomNumber(-20.0, 20.0);
+        float posY = RandomNumber(0.0, 30.0);
+        float posZ = RandomNumber(-20.0, 20.0);
+
+        float velX = RandomNumber(-0.0, -1.0);
+        float velY = RandomNumber(-2.0, -4.0);
+        float velZ = RandomNumber(-0.0, -1.0);
+
+        float ranX = RandomNumber(-1.0, 1.0);
+        float ranY = 0.0;
+        float ranZ = RandomNumber(-1.0, 1.0);
+
+        glm::vec3 color = glm::vec3(0.0, 0.0, 0.0);
+
+        emitParticle(posX, posY, posZ, velX, velY, velZ, ranX, ranY, ranZ, color);
+    }
+}
+
+void initRainParticles() {
+    for(int i = 0; i < numberOfParticles; i ++)
+    {
+        float posXStart = RandomNumber(boxSize, boxSize * 2);
+        float posYStart = RandomNumber(boxSize, boxSize * 2);
+        float posZStart = RandomNumber(boxSize, boxSize * 2);
+
+        float posXEnd = RandomNumber(boxSize, boxSize * 2);
+        float posYEnd = RandomNumber(boxSize, boxSize * 2);
+        float posZEnd = RandomNumber(boxSize, boxSize * 2);
+
+        float velX = RandomNumber(-0.0, -1.0);
+        float velY = RandomNumber(-2.0, -4.0);
+        float velZ = RandomNumber(-0.0, -1.0);
+
+        float ranX = RandomNumber(-1.0, 1.0);
+        float ranY = 0.0;
+        float ranZ = RandomNumber(-1.0, 1.0);
+
+        glm::vec3 color = glm::vec3(0.0, 0.0, 0.0);
+
+        emitLine(posXStart, posYStart, posZStart, posXEnd, posYEnd, posZEnd, velX, velY, velZ, ranX, ranY, ranZ, color);
+    }
+}
+
+void createSnowVertexBuffer(){
     glGenVertexArrays(1, &ParticleVAO);
     glGenBuffers(1, &ParticleVBO);
 
@@ -217,29 +306,83 @@ void createRainVertexBuffer(){
 
     // allocate at openGL controlled memory
     glBufferData(GL_ARRAY_BUFFER, numberOfParticles * particleSize * sizeOfFloat, &data[0], GL_DYNAMIC_DRAW);
-    bindAttributes();
+    bindAttributesParticle();
 }
 
-void bindAttributes(){
+void createRainVertexBuffer(){
+    glGenVertexArrays(1, &LineVAO);
+    glGenBuffers(1, &LineVBO);
+
+    glBindVertexArray(LineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
+
+    // initialize particle buffer, set all values to 0
+    std::vector<float> data(numberOfParticles * lineSize);
+    for(float & i : data)
+        i = 0.0f;
+
+    // allocate at openGL controlled memory
+    glBufferData(GL_ARRAY_BUFFER, numberOfParticles * lineSize * sizeOfFloat, &data[0], GL_DYNAMIC_DRAW);
+    bindAttributesLine();
+}
+
+void bindAttributesParticle(){
     int posSize = 3; // each position has x,y & z
-    GLuint vertexLocation = glGetAttribLocation(shaderProgramRain->ID, "pos");
+    GLuint vertexLocation = glGetAttribLocation(shaderProgramSnow->ID, "pos");
     glEnableVertexAttribArray(vertexLocation);
     glVertexAttribPointer(vertexLocation, posSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)0);
 
-    // TODO 2.2 set velocity and timeOfBirth shader attributes
-    int velSize = 2;
-    GLuint vertexVelocity = glGetAttribLocation(shaderProgramRain->ID, "velocity");
+    int velocitySize = 3; // each position has x,y & z
+    GLuint velocityLocation = glGetAttribLocation(shaderProgramSnow->ID, "velocity");
+    glEnableVertexAttribArray(velocityLocation);
+    glVertexAttribPointer(velocityLocation, velocitySize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)(posSize*sizeOfFloat));
 
-    glEnableVertexAttribArray(vertexVelocity);
-    glVertexAttribPointer(vertexVelocity, velSize, GL_FLOAT, GL_FALSE,
-                          particleSize * sizeOfFloat, (void*) (posSize * sizeOfFloat));
+    int randomOffsetSize = 3; // each position has x,y & z
+    GLuint randomOffsetLocation = glGetAttribLocation(shaderProgramSnow->ID, "randomOffset");
+    glEnableVertexAttribArray(randomOffsetLocation);
+    glVertexAttribPointer(randomOffsetLocation, randomOffsetSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSize + velocitySize)*sizeOfFloat));
 
-    int timeBirthSize = 1;
-    GLuint timeBirthLocation = glGetAttribLocation(shaderProgramRain->ID, "timeOfBirth");
-    glEnableVertexAttribArray(timeBirthLocation);
-    glVertexAttribPointer(timeBirthLocation, timeBirthSize, GL_FLOAT, GL_FALSE,
-                          particleSize * sizeOfFloat,  (void*) ( (posSize + velSize) * sizeOfFloat));
+    int colorSize = 3; // each position has x,y & z
+    GLuint colorLocation = glGetAttribLocation(shaderProgramSnow->ID, "color");
+    glEnableVertexAttribArray(colorLocation);
+    glVertexAttribPointer(colorLocation, colorSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSize + velocitySize + randomOffsetSize)*sizeOfFloat));
 
+    int timeOfBirthSize = 1; // each position has x,y & z
+    GLuint timeOfBirthLocation = glGetAttribLocation(shaderProgramSnow->ID, "timeOfBirth");
+    glEnableVertexAttribArray(timeOfBirthLocation);
+    glVertexAttribPointer(timeOfBirthLocation, timeOfBirthSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSize + velocitySize + randomOffsetSize + colorSize)*sizeOfFloat));
+}
+
+void bindAttributesLine(){
+    int posSizeStart = 3; // each position has x,y & z
+    GLuint vertexStartLocation = glGetAttribLocation(shaderProgramRain->ID, "posStart");
+    glEnableVertexAttribArray(vertexStartLocation);
+    glVertexAttribPointer(vertexStartLocation, posSizeStart, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)0);
+
+    int posSizeEnd = 3; // each position has x,y & z
+    GLuint vertexEndLocation = glGetAttribLocation(shaderProgramRain->ID, "posEnd");
+    glEnableVertexAttribArray(vertexEndLocation);
+    glVertexAttribPointer(vertexEndLocation, posSizeEnd, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)(posSizeStart * sizeOfFloat) );
+
+    int velocitySize = 3; // each position has x,y & z
+    GLuint velocityLocation = glGetAttribLocation(shaderProgramSnow->ID, "velocity");
+    glEnableVertexAttribArray(velocityLocation);
+    glVertexAttribPointer(velocityLocation, velocitySize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSizeStart+posSizeEnd)*sizeOfFloat));
+
+    int randomOffsetSize = 3; // each position has x,y & z
+    GLuint randomOffsetLocation = glGetAttribLocation(shaderProgramSnow->ID, "randomOffset");
+    glEnableVertexAttribArray(randomOffsetLocation);
+    glVertexAttribPointer(randomOffsetLocation, randomOffsetSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSizeStart+posSizeEnd + velocitySize)*sizeOfFloat));
+
+    int colorSize = 3; // each position has x,y & z
+    GLuint colorLocation = glGetAttribLocation(shaderProgramSnow->ID, "color");
+    glEnableVertexAttribArray(colorLocation);
+    glVertexAttribPointer(colorLocation, colorSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSizeStart+posSizeEnd + velocitySize + randomOffsetSize)*sizeOfFloat));
+
+    int timeOfBirthSize = 1; // each position has x,y & z
+    GLuint timeOfBirthLocation = glGetAttribLocation(shaderProgramSnow->ID, "timeOfBirth");
+    glEnableVertexAttribArray(timeOfBirthLocation);
+    glVertexAttribPointer(timeOfBirthLocation, timeOfBirthSize, GL_FLOAT, GL_FALSE, particleSize * sizeOfFloat, (void*)((posSizeStart+posSizeEnd + velocitySize + randomOffsetSize + colorSize)*sizeOfFloat));
 }
 
 
@@ -278,8 +421,8 @@ void drawCube(glm::mat4 model){
 void setup(){
     // initialize shaders
     shaderProgramWorld = new Shader("shaders/shader.vert", "shaders/shader.frag");
+    shaderProgramSnow = new Shader("shaders/snow.vert", "shaders/snow.frag");
     shaderProgramRain = new Shader("shaders/rain.vert", "shaders/rain.frag");
-
     // load floor mesh into openGL
     floorObj.VAO = createVertexArray(floorVertices, floorColors, floorIndices);
     floorObj.vertexCount = floorIndices.size();
@@ -289,16 +432,49 @@ void setup(){
     cube.vertexCount = cubeIndices.size();
 }
 
-void emitParticle(float x, float y, float z, float velocityX, float velocityY, float timeOfBirth){
+void emitParticle(float posX, float posY, float posZ, float velX, float velY, float velZ, float ranX, float ranY, float ranZ, glm::vec3 color){
     glBindVertexArray(ParticleVAO);
     glBindBuffer(GL_ARRAY_BUFFER, ParticleVBO);
     float data[particleSize];
-    data[0] = x;
-    data[1] = y,
-    data[2] = z,
-    data[3] = velocityX,
-    data[4] = velocityY,
-    data[5] = timeOfBirth;
+    data[0] = posX;
+    data[1] = posY;
+    data[2] = posZ;
+    data[3] = velX;
+    data[4] = velY;
+    data[5] = velZ;
+    data[6] = ranX;
+    data[7] = ranY;
+    data[8] = ranZ;
+    data[9] = color.x;
+    data[10] = color.y;
+    data[11] = color.z;
+    data[12] = currentTime;
+
+    // upload only parts of the buffer
+    glBufferSubData(GL_ARRAY_BUFFER, particleId * particleSize * sizeOfFloat, particleSize * sizeOfFloat, data);
+    particleId = (particleId + 1) % numberOfParticles;
+}
+
+void emitLine(float posXStart, float posYStart, float posZStart, float posXEnd, float posYEnd, float posZEnd, float velX, float velY, float velZ, float ranX, float ranY, float ranZ, glm::vec3 color){
+    glBindVertexArray(ParticleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, ParticleVBO);
+    float data[lineSize];
+    data[0] = posXStart;
+    data[1] = posYStart;
+    data[2] = posZStart;
+    data[3] = posXEnd;
+    data[4] = posYEnd;
+    data[5] = posZEnd;
+    data[6] = velX;
+    data[7] = velY;
+    data[8] = velZ;
+    data[9] = ranX;
+    data[10] = ranY;
+    data[11] = ranZ;
+    data[12] = color.x;
+    data[13] = color.y;
+    data[14] = color.z;
+    data[15] = currentTime;
 
     // upload only parts of the buffer
     glBufferSubData(GL_ARRAY_BUFFER, particleId * particleSize * sizeOfFloat, particleSize * sizeOfFloat, data);
@@ -425,6 +601,16 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         camPosition += glm::cross(forwardInXZ, glm::vec3(0, 1, 0)) * linearSpeed;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    {
+        isRaining = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    {
+        isRaining = false;
     }
 }
 

@@ -1,10 +1,9 @@
 #version 330 core
-layout (location = 0) in vec3 posStart;
-layout (location = 1) in vec3 posEnd;
-layout (location = 2) in vec3 velocity;
-layout (location = 3) in vec3 randomOffset;
-layout (location = 4) in vec3 color;
-layout (location = 5) in float timeOfBirth;
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec3 velocity;
+layout (location = 2) in vec3 randomOffset;
+layout (location = 3) in vec3 color;
+layout (location = 4) in float timeOfBirth;
 
 uniform float currentTime;
 uniform mat4 model;
