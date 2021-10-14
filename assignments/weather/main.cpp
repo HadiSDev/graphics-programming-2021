@@ -223,8 +223,8 @@ void renderParticles() {
 
 void renderLines() {
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    shaderProgramSnow -> use();
-    shaderProgramSnow -> setFloat("currentTime", currentTime);
+    shaderProgramRain -> use();
+    shaderProgramRain -> setFloat("currentTime", currentTime);
 
     glm::mat4 scale = glm::scale(1.f, 1.f, 1.f);
 
@@ -232,16 +232,16 @@ void renderLines() {
     glm::mat4 view = glm::lookAt(camPosition, camPosition + camForward, glm::vec3(0,1,0));
     glm::mat4 viewProjection = projection * view;
 
-    shaderProgramSnow->setMat4("model", viewProjection);
+    shaderProgramRain->setMat4("model", viewProjection);
 
     glm::vec3 forwardOffset(camForward * 2.0f);
 
 
-    shaderProgramSnow->setVec3("camPosition", camPosition);
-    shaderProgramSnow->setVec3("forwardOffset", forwardOffset);
+    shaderProgramRain->setVec3("camPosition", camPosition);
+    shaderProgramRain->setVec3("forwardOffset", forwardOffset);
 
 
-    glBindVertexArray(ParticleVAO);
+    glBindVertexArray(LineVAO);
     glDrawArrays(GL_LINE, 0, numberOfParticles);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
 }
@@ -456,8 +456,8 @@ void emitParticle(float posX, float posY, float posZ, float velX, float velY, fl
 }
 
 void emitLine(float posXStart, float posYStart, float posZStart, float posXEnd, float posYEnd, float posZEnd, float velX, float velY, float velZ, float ranX, float ranY, float ranZ, glm::vec3 color){
-    glBindVertexArray(ParticleVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, ParticleVBO);
+    glBindVertexArray(LineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
     float data[lineSize];
     data[0] = posXStart;
     data[1] = posYStart;
