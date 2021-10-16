@@ -84,7 +84,7 @@ unsigned int ParticleVAO, ParticleVBO, LineVAO, LineVBO;
 const unsigned int sizeOfFloat = 4;
 unsigned int particleId = 0;
 const float boxSize = 5.0;
-bool isRaining = true;
+bool isRaining = false;
 
 int main()
 {
@@ -139,6 +139,10 @@ int main()
     glDepthRange(-1,1); // make the NDC a LEFT handed coordinate system, with the camera pointing towards +z
     glEnable(GL_DEPTH_TEST); // turn on z-buffer depth test
     glDepthFunc(GL_LESS); // draws fragments that are closer to the screen in NDC
+
+    glEnable(GL_BLEND);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     createSnowVertexBuffer();
     createRainVertexBuffer();
@@ -261,7 +265,7 @@ void initSnowParticles() {
         float ranY = 0.0;
         float ranZ = RandomNumber(-1.0, 1.0);
 
-        glm::vec3 color = glm::vec3(0.0, 0.0, 0.0);
+        glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
 
         emitParticle(posX, posY, posZ, velX, velY, velZ, ranX, ranY, ranZ, color);
     }

@@ -12,6 +12,7 @@ uniform vec3 camPosition;
 uniform vec3 forwardOffset;
 
 out vec3 particleColor;
+out float distanceFrag;
 
 void main()
 {
@@ -29,6 +30,7 @@ void main()
    gl_Position = model * vec4(position, 1.0);
 
    float distance = distance(position, camPosition); // To avoid division by zerp
+   distanceFrag = distance;
 
    gl_PointSize = 5.0/distance;
 
