@@ -39,14 +39,14 @@ void main() {
 
    T = normalize(T - dot(T, N) * N);
 
-   vec3 B = cross(N, T);
+   vec3 B = cross(T, N);
 
-   mat3 TBN = mat3(T, B, N);
+   mat3 TBN = transpose(mat3(T, B, N));
 
 
    // variables we wanna send to the fragment shader
    // inverse of TBN, to map from tangent space to world space (needed for reflections)
-   vs_out.invTBN = inverse(TBN);
+   vs_out.invTBN = transpose(TBN);
    // light direction, view position, vertex position, and normal in tangent space
    vs_out.LightDir_tangent = TBN * lightDirection;
    vs_out.CamPos_tangent = TBN * viewPosition;

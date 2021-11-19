@@ -53,9 +53,8 @@ void main()
    N = normalize(mix(fs_in.Norm_tangent, N, normalMappingMix));
 
    // TODO exercise 10.5 skybox reflection
-   vec3 Nworld = N * fs_in.invTBN;
    vec3 I = normalize(fs_in.Pos_tangent - fs_in.CamPos_tangent);
-   vec3 refl = reflect(I, Nworld);
+   vec3 refl = fs_in.invTBN * reflect(I, N);
 
    // TODO exercise 10.5 skybox reflection using the normal map
    //  the cube map has to be sampled with world space directions, rotate the normal with fs_in.invTBN so that it's in world space
