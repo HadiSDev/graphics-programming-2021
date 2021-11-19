@@ -10,6 +10,7 @@ in VS_OUT {
 // light uniform variables
 uniform vec3 ambientLightColor;
 uniform vec3 lightColor;
+uniform int uvScale;
 
 // attenuation
 uniform float attenuationC0;
@@ -27,7 +28,7 @@ out vec4 FragColor;
 
 void main()
 {
-   vec4 albedo = texture(texture_diffuse1, fs_in.textCoord);
+   vec4 albedo = texture(texture_diffuse1, fs_in.textCoord * uvScale);
    vec3 color = albedo.rgb;
 
    // ambient component

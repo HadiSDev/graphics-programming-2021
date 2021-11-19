@@ -83,6 +83,7 @@ struct Config {
     unsigned int wrapSetting = GL_REPEAT;
     unsigned int minFilterSetting = GL_LINEAR_MIPMAP_LINEAR;
     unsigned int magFilterSetting = GL_LINEAR;
+    unsigned int uvScale = 1;
 
 } config;
 
@@ -217,7 +218,38 @@ void loadFloorTexture(){
     // TODO this is mostly a copy and paste of the function 'TextureFromFile' in the 'model.h' file
     //  however, you should use the min/mag/wrap settings that you can control in the user interface
     //  and load the texture 'floor/checkboard_texture.png'
+    string filename = "floor/checkboard_texture.png";
 
+    glGenTextures(1, &floorTextureId);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, floorTextureId);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, config.wrapSetting);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, config.wrapSetting);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, config.minFilterSetting);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, config.magFilterSetting);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << filename << std::endl;
+        stbi_image_free(data);
+    }
 }
 
 // --------------
@@ -277,7 +309,8 @@ void drawGui(){
         ImGui::Separator();
 
         // TODO exercise 9.2 add slider to control uvScale
-
+        ImGui::Text("uv Scaler");
+        ImGui::SliderInt("uvScaler", reinterpret_cast<int *>(&config.uvScale), 1, 20);
         ImGui::Separator();
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -305,7 +338,7 @@ void drawFloor(){
     floorShader->setFloat("attenuationC2", config.attenuationC2);
 
     // TODO exercise 9.2 send uvScale to the shader as a uniform variable
-
+    floorShader ->setInt("uvScale", config.uvScale);
 
 
     // camera parameters

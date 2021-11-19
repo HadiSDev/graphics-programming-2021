@@ -360,7 +360,7 @@ void createRainVertexBuffer(){
 //        float x = RandomNumber(boxSize, boxSize * 2);
 //        float y = RandomNumber(boxSize, boxSize * 2);
 //        float z = RandomNumber(boxSize, boxSize * 2);
-
+//
         float x = 5.0;
         float y = 5.0;
         float z = 5.0;
