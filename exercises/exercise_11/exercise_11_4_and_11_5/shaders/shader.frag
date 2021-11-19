@@ -46,21 +46,21 @@ void main()
 
    // TODO exercise 10.4 normal texture sampling and range adjustment
    // fix normal range: rgb sampled value is in the range [0,1], but xyz normal vectors must be in the range [-1,1]
-   vec3 N = vec3(1.0, 1.0, 1.0);
-
+   vec3 N = texture(texture_normal1, fs_in.textCoord).rgb;
+   N = normalize(N * 2.0 - 1.0);
 
    // mix the vertex normal and the normal map texture so we can visualize the difference with it makes with a slider
    N = normalize(mix(fs_in.Norm_tangent, N, normalMappingMix));
 
    // TODO exercise 10.5 skybox reflection
-
+   vec3 Nworld = N * fs_in.invTBN;
+   vec3 I = normalize(fs_in.Pos_tangent - fs_in.CamPos_tangent);
+   vec3 refl = reflect(I, Nworld);
 
    // TODO exercise 10.5 skybox reflection using the normal map
    //  the cube map has to be sampled with world space directions, rotate the normal with fs_in.invTBN so that it's in world space
 
-   vec3 reflectionColor = vec3(1.0, 1.0, 1.0);
-
-
+   vec3 reflectionColor = texture(skybox, refl).rgb;
 
    // LIGHTING - there are two differences in this lighting model:
    // blinn-phong reflection model instead of phong

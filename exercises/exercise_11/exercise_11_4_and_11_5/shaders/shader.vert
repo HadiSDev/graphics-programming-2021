@@ -35,7 +35,13 @@ void main() {
    // TODO exercise 10.4 compute the TBN matrix, which maps from world space to Tangent space
    //  notice that tangent and bitangent are given as vertex properties
    //  try to ensure that the 3 vectors you use to define TBN are perpecndicular
-   mat3 TBN =  mat3(1);
+   vec3 T = normalize(vec3(model * vec4(tangent, 0.0)));
+
+   T = normalize(T - dot(T, N) * N);
+
+   vec3 B = cross(N, T);
+
+   mat3 TBN = mat3(T, B, N);
 
 
    // variables we wanna send to the fragment shader
